@@ -1,5 +1,4 @@
 #!/bin/sh
-set -e
 
 echo "Starting Vault server..."
 vault server -dev -dev-root-token-id=root &

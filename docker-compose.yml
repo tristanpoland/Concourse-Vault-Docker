@@ -13,7 +13,7 @@ services:
     volumes:
       - ./vault/file:/vault/file
       - ./vault-entrypoint.sh:/vault-entrypoint.sh
-    entrypoint: /vault-entrypoint.sh
+    entrypoint: ["sh","/vault-entrypoint.sh"]
     healthcheck:
       test: ["CMD", "vault", "status"]
       interval: 10s
@@ -72,7 +72,7 @@ services:
       - CONCOURSE_TSA_AUTHORIZED_KEYS=/concourse-keys/authorized_worker_keys
       - CONCOURSE_SESSION_SIGNING_KEY=/concourse-keys/session_signing_key
       - CONCOURSE_TSA_BIND_PORT=2222
-    entrypoint: ["/entrypoint.sh"]
+    entrypoint: ["sh","/entrypoint.sh"]
     networks:
       - concourse-net
 

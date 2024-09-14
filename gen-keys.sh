@@ -1,6 +1,4 @@
 #!/bin/sh
-set -e
-
 mkdir -p keys/web keys/worker
 
 # Generate keys using concourse CLI
