@@ -8,7 +8,7 @@ A simple, hastle-free template for deploying a Concourse Web UI, Concourse Worke
 - run `setup.sh` (No, really, it's that easy!)
 
 # Using the concourse UI
-- your UI is no avalible at the port defined in your docker-compose file under the ``concourse-web`` service
+- your UI is now avalible at the port defined in your docker-compose file under the ``concourse-web`` service
 ![image](https://github.com/user-attachments/assets/8a9f1b5a-fabc-49ff-8d99-54e4200554a2)
 
 # How it works
