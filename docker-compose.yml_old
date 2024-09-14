@@ -1,0 +1,94 @@
+version: '3.8'
+services:
+  vault:
+    image: hashicorp/vault:latest
+    container_name: vault
+    ports:
+      - "8200:8200"
+    environment:
+      - 'VAULT_DEV_ROOT_TOKEN_ID=root'
+      - 'VAULT_ADDR=http://0.0.0.0:8200'
+    cap_add:
+      - IPC_LOCK
+    volumes:
+      - ./vault/file:/vault/file
+      - ./vault/config/vault-entrypoint.sh:/vault-entrypoint.sh
+    entrypoint: /vault-entrypoint.sh
+    healthcheck:
+      test: ["CMD", "vault", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  concourse-db:
+    image: postgres:13
+    container_name: concourse-db
+    environment:
+      - 'POSTGRES_DB=concourse'
+      - 'POSTGRES_USER=concourse'
+      - 'POSTGRES_PASSWORD=concourse_pass'
+    volumes:
+      - concourse-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U concourse"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  concourse:
+    image: concourse/concourse:7.7.1
+    container_name: concourse
+    command: web
+    depends_on:
+      concourse-db:
+        condition: service_healthy
+      vault:
+        condition: service_healthy
+    ports:
+      - "60056:8080"
+    volumes:
+      - ./vault/file:/vault/file:ro
+      - ./keys/web:/concourse-keys
+      - ./concourse-entrypoint.sh:/entrypoint.sh
+    environment:
+      - CONCOURSE_EXTERNAL_URL=http://gameplexsoftware.com:60056
+      - CONCOURSE_POSTGRES_HOST=concourse-db
+      - CONCOURSE_POSTGRES_USER=concourse
+      - CONCOURSE_POSTGRES_PASSWORD=concourse_pass
+      - CONCOURSE_POSTGRES_DATABASE=concourse
+      - CONCOURSE_ADD_LOCAL_USER=test:test
+      - CONCOURSE_MAIN_TEAM_LOCAL_USER=test
+      - CONCOURSE_VAULT_URL=http://vault:8200
+      - CONCOURSE_VAULT_AUTH_BACKEND=approle
+      - CONCOURSE_VAULT_PATH_PREFIX=concourse
+      - CONCOURSE_VAULT_INSECURE_SKIP_VERIFY=true
+      - CONCOURSE_TSA_HOST_KEY=/concourse-keys/tsa_host_key
+      - CONCOURSE_TSA_AUTHORIZED_KEYS=/concourse-keys/authorized_worker_keys
+      - CONCOURSE_SESSION_SIGNING_KEY=/concourse-keys/session_signing_key
+    entrypoint: ["/entrypoint.sh"]
+
+  concourse-worker:
+    image: concourse/concourse:7.7.1
+    container_name: concourse-worker
+    command: worker
+    privileged: true
+    depends_on:
+      - concourse
+    volumes:
+      - ./keys/worker:/concourse-keys
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - CONCOURSE_TSA_HOST=concourse:2222
+      - CONCOURSE_TSA_PUBLIC_KEY=/concourse-keys/tsa_host_key.pub
+      - CONCOURSE_TSA_WORKER_PRIVATE_KEY=/concourse-keys/worker_key
+      - CONCOURSE_GARDEN_NETWORK_POOL=10.255.0.0/22
+      - CONCOURSE_BAGGAGECLAIM_DRIVER=overlay
+      - CONCOURSE_WORK_DIR=/opt/concourse/worker
+      - CONCOURSE_RUNTIME=containerd
+    networks:
+      - concourse-net
+networks:
+  concourse-net:
+volumes:
+  concourse-db-data:
